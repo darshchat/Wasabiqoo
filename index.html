@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>وسارعوا – ميزان الاستغفار</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Tajawal', sans-serif; }
+    .fade-in { animation: fadeIn 0.8s ease-out both; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-b from-cyan-100 to-white text-gray-900">
+  <header class="bg-cyan-600 text-white text-center py-6 shadow-md fade-in">
+    <h1 class="text-3xl font-bold">وسابقوا إلى مغفرة من ربكم</h1>
+    <p class="mt-2 text-sm max-w-2xl mx-auto px-4">
+      فَقُلْتُ اسْتَغْفِرُوا رَبَّكُمْ إِنَّهُ كَانَ غَفَّارًا (10) يُرْسِلِ السَّمَاءَ عَلَيْكُم مِّدْرَارًا (11) وَيُمْدِدْكُم بِأَمْوَالٍ وَبَنِينَ وَيَجْعَل لَّكُمْ جَنَّاتٍ وَيَجْعَل لَّكُمْ أَنْهَارًا (12) مَّا لَكُمْ لَا تَرْجُونَ لِلَّهِ وَقَارًا (13)
+    </p>
+  </header>
+
+  <main class="max-w-xl mx-auto p-6 fade-in">
+    <section class="bg-white rounded-2xl shadow-lg p-6 text-center border border-cyan-200">
+      <h2 class="text-xl font-bold mb-4">أدخل اسمك وابدأ في الاستغفار</h2>
+      <input id="name" type="text" placeholder="اكتب اسمك هنا" class="w-full text-center border rounded-lg p-2 mb-4 focus:outline-none focus:ring-2 focus:ring-cyan-400">
+      <p class="text-sm text-gray-500 mb-4">كل شخص يرى عدّاده فقط</p>
+
+      <div class="text-5xl font-extrabold text-cyan-700 transition-all duration-300" id="myCount">0</div>
+
+      <div class="grid grid-cols-3 gap-3 mt-6">
+        <button class="bg-cyan-600 hover:bg-cyan-700 transition-colors text-white py-2 rounded-lg font-bold" data-add="1">+1</button>
+        <button class="bg-cyan-600 hover:bg-cyan-700 transition-colors text-white py-2 rounded-lg font-bold" data-add="33">+33</button>
+        <button class="bg-cyan-600 hover:bg-cyan-700 transition-colors text-white py-2 rounded-lg font-bold" data-add="100">+100</button>
+      </div>
+
+      <button id="resetBtn" class="mt-6 bg-red-500 hover:bg-red-600 transition-colors text-white py-2 px-4 rounded-lg font-bold">تصفير العداد</button>
+    </section>
+  </main>
+
+  <footer class="text-center text-xs text-gray-500 p-4 fade-in">
+    تصميم تطوّعي لوجه الله – حفظ العدادات محليًا + Google Sheets
+  </footer>
+
+  <script>
+    const API_URL = "https://script.google.com/macros/s/AKfycby01krGKnpXugyKeOwtnMdGork4gKHLGS4iS9Vo2gcN5bFd_J51S7Z2gnACbz-PRu1lGQ/exec";
+
+    const $ = sel => document.querySelector(sel);
+    const nameInput = $('#name');
+    const myCountEl = $('#myCount');
+    const buttons = document.querySelectorAll('[data-add]');
+    let currentName = null;
+
+    function getLocalCount(name) {
+      const raw = localStorage.getItem(`istighfar_${name}`);
+      return raw ? parseInt(raw) || 0 : 0;
+    }
+
+    function setLocalCount(name, count) {
+      localStorage.setItem(`istighfar_${name}`, count);
+    }
+
+    function animateCount(el, target) {
+      const current = parseInt(el.textContent.replace(/,/g, '')) || 0;
+      const duration = 800;
+      const start = performance.now();
+      const step = (now) => {
+        const progress = Math.min((now - start) / duration, 1);
+        const value = Math.floor(current + (target - current) * progress);
+        el.textContent = value.toLocaleString('ar-EG');
+        if (progress < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    }
+
+    nameInput.addEventListener('change', () => {
+      currentName = nameInput.value.trim();
+      if (currentName) {
+        const c = getLocalCount(currentName);
+        animateCount(myCountEl, c);
+      }
+    });
+
+    buttons.forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const delta = parseInt(btn.dataset.add);
+        if (!currentName) {
+          alert("من فضلك أدخل اسمك أولاً");
+          return;
+        }
+
+        try {
+          const res = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: currentName, delta })
+          });
+
+          const data = await res.json();
+          if (data.success) {
+            setLocalCount(currentName, data.count);
+            animateCount(myCountEl, data.count);
+          } else {
+            alert(data.error || "حدث خطأ");
+          }
+        } catch (err) {
+          alert("فشل الاتصال بالخادم");
+        }
+      });
+    });
+
+    $('#resetBtn').addEventListener('click', () => {
+      if (!currentName) return;
+      setLocalCount(currentName, 0);
+      animateCount(myCountEl, 0);
+    });
+  </script>
+</body>
+</html>
